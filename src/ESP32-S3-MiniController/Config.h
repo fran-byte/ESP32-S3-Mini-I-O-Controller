@@ -2,32 +2,35 @@
 #include <Arduino.h>
 
 // ===================== PIN CONFIG (ESP32-S3 SuperMini) =====================
-// Pin definitions fully compatible with MagSenseUI hardware layout.
+// Pin definitions based on hardware schematic.
 
 // ---------------------- Motor Driver Outputs ----------------------
 // These pins typically drive optocouplers when controlling 24V logic systems.
+// Outputs: IO1, IO2, IO3, IO13
 #define PIN_CLOCK 1      // Step/clock output for motor speed control
 #define PIN_DIR 2        // Direction control output
 #define PIN_BRAKE 3      // Optional brake signal (depends on active profile)
-#define PIN_STOP 4       // Optional stop/override signal
-#define PIN_ENABLE 11    // Optional driver enable line
+#define PIN_STOP 13      // Optional stop/override signal
 
 // ---------------------- Motor Driver Inputs -----------------------
 // Inputs from driver for feedback and fault monitoring.
+// Inputs: IO8, IO11, IO12
 #define PIN_FG 12        // Frequency generator/tachometer input (interrupt-capable)
-#define PIN_LD 13        // Alarm or fault input from motor driver
+#define PIN_LD 11        // Alarm or fault input from motor driver
+#define PIN_ENABLE 8     // Optional driver enable input
 
 // ---------------------- OLED I2C Interface ------------------------
-// Same pin assignment used by MagSenseUI for display compatibility.
+// I2C pins for OLED display (SH1106 128x64).
 #define PIN_OLED_SDA 9   // I2C data line for OLED
 #define PIN_OLED_SCL 10  // I2C clock line for OLED
 
 // ---------------------- Button Inputs -----------------------------
-// Buttons are active LOW and follow the standard MagSenseUI arrangement.
+// Buttons are active LOW with internal pull-ups.
+// UP/DOWN/LEFT/RIGHT: IO4/IO7/IO5/IO6
 #define PIN_BTN_UP     4 // Up navigation button
-#define PIN_BTN_LEFT   5 // Left navigation button
-#define PIN_BTN_RIGHT  6 // Right navigation button
 #define PIN_BTN_DOWN   7 // Down navigation button
+#define PIN_BTN_LEFT   5 // Left navigation button (back/cancel)
+#define PIN_BTN_RIGHT  6 // Right navigation button (select/confirm)
 
 // ---------------------- LEDC Clock Generator -----------------------
 // Used to generate the CLOCK signal for the motor using PWM.

@@ -49,9 +49,10 @@ void setup()
     Serial.print("ENABLE: ");  Serial.println(PIN_ENABLE);
     Serial.print("FG: ");      Serial.println(PIN_FG);
     Serial.print("LD: ");      Serial.println(PIN_LD);
-    Serial.print("BTN_UP: ");  Serial.println(PIN_BTN_UP);
-    Serial.print("BTN_DOWN: ");Serial.println(PIN_BTN_DOWN);
-    Serial.print("BTN_SEL: "); Serial.println(PIN_BTN_SEL);
+    Serial.print("BTN_UP: ");    Serial.println(PIN_BTN_UP);
+    Serial.print("BTN_DOWN: ");  Serial.println(PIN_BTN_DOWN);
+    Serial.print("BTN_LEFT: ");  Serial.println(PIN_BTN_LEFT);
+    Serial.print("BTN_RIGHT: "); Serial.println(PIN_BTN_RIGHT);
 
     // ------------------- I2C bus init for OLED -------------------------
     Serial.println("\n--- Initializing I2C ---");
@@ -67,8 +68,10 @@ void setup()
     Serial.print(digitalRead(PIN_BTN_UP));
     Serial.print(" DOWN:");
     Serial.print(digitalRead(PIN_BTN_DOWN));
-    Serial.print(" SEL:");
-    Serial.println(digitalRead(PIN_BTN_SEL));
+    Serial.print(" LEFT:");
+    Serial.print(digitalRead(PIN_BTN_LEFT));
+    Serial.print(" RIGHT:");
+    Serial.println(digitalRead(PIN_BTN_RIGHT));
 
     // ------------------- Profile storage (NVS/Preferences) -------------
     Serial.println("--- Initializing Profile Store ---");
@@ -108,8 +111,8 @@ void setup()
     Serial.println("\n=== SETUP COMPLETE ===");
     Serial.println("Controls:");
     Serial.println("  UP/DOWN: Change speed");
-    Serial.println("  SEL short: Menu");
-    Serial.println("  SEL long: Start/Stop motor");
+    Serial.println("  LEFT: Back/Cancel");
+    Serial.println("  RIGHT: Menu/Select/Confirm");
     Serial.println("========================\n");
 }
 

@@ -21,7 +21,7 @@ static const Strings STR_ES = {
     "LD:",                                           // ld
     "ALARM",                                         // alarm
     "OK",                                            // ok
-    "UP/DOWN: Vel.  SEL: Menu  MANTEN SEL: Atras/Arr-Det", // footer_home
+    "UP/DN:Vel L:Diag R:Menu", // footer_home
 
     // ---------------- Menu ----------------
     "CONFIGURACION",                                 // menu
@@ -37,7 +37,7 @@ static const Strings STR_ES = {
     "Lenguaje/Telemetria",                           // m_settings
     "Acerca de",                                     // m_about
     "Atras",                                         // m_back
-    "UP/DOWN=Mover  SEL=Seleccionar",                // footer_menu
+    "UP/DN=Mover L=Atras R=Seleccionar",                // footer_menu
 
     // ---------------- Wizard ----------------
     "Nombre:",                                       // w_name
@@ -56,10 +56,10 @@ static const Strings STR_ES = {
     "Guardar perfil?",                               // w_save
     "SI",                                            // yes
     "NO",                                            // no
-    "UP/DOWN=Cambiar  SEL=Siguiente",                // hint_yesno
-    "UP/DOWN=Mover  SEL=OK",                         // hint_choice
-    "UP/DOWN=Cambiar  SEL=OK",                       // hint_number
-    "UP/DN=Car SEL=Sig/END",                         // hint_text
+    "UP/DN=Cambiar L=Atras R=Sig",                      // hint_yesno
+    "UP/DN=Mover L=Atras R=OK",                         // hint_choice
+    "UP/DN=Cambiar L=Atras R=OK",                       // hint_number
+    "UP/DN=Car L=Atras R=Sig/END",                      // hint_text
 
     // ---------------- Settings ----------------
     "CONFIGURACION",                                 // s_title

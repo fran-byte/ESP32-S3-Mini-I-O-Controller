@@ -18,10 +18,10 @@ public:
         pinMode(PIN_DIR,    OUTPUT);     // Direction output
         pinMode(PIN_BRAKE,  OUTPUT);     // Optional brake line
         pinMode(PIN_STOP,   OUTPUT);     // Optional stop line
-        pinMode(PIN_ENABLE, OUTPUT);     // Optional enable line
 
-        pinMode(PIN_FG, INPUT_PULLUP);   // Tachometer input (FG), active edge = RISING
-        pinMode(PIN_LD, INPUT_PULLUP);   // Fault/alarm input (LD), polarity set by profile
+        pinMode(PIN_ENABLE, INPUT_PULLUP); // Optional enable input (changed from output)
+        pinMode(PIN_FG,     INPUT_PULLUP); // Tachometer input (FG), active edge = RISING
+        pinMode(PIN_LD,     INPUT_PULLUP); // Fault/alarm input (LD), polarity set by profile
 
         // ---------------- LEDC clock setup ----------------
         // Attach LEDC (ESP32 PWM) to PIN_CLOCK with an initial frequency and resolution.
@@ -67,7 +67,8 @@ public:
 
     // Push current runtime control state to hardware pins, honoring profile options:
     //  - Direction line always active
-    //  - Brake/Enable/Stop only if present in profile, with correct active polarity
+    //  - Brake/Stop only if present in profile, with correct active polarity
+    //  - Enable is now an INPUT, so we read it instead of writing to it
     void applyOutputs()
     {
         digitalWrite(PIN_DIR, dirCW ? HIGH : LOW);
@@ -75,18 +76,20 @@ public:
         if (prof.hasBrake)
             digitalWrite(PIN_BRAKE, brakeOn ? HIGH : LOW);
 
-        if (prof.hasEnable)
-        {
-            bool level = prof.enableActiveHigh ? enabled : !enabled;
-            digitalWrite(PIN_ENABLE, level ? HIGH : LOW);
-        }
-
         if (prof.hasStop)
         {
             // When not running, assert STOP according to profile polarity.
             bool active = !running;
             bool level = prof.stopActiveHigh ? active : !active;
             digitalWrite(PIN_STOP, level ? HIGH : LOW);
+        }
+
+        // Note: ENABLE is now an input pin, so we don't control it
+        // The 'enabled' flag reflects the state we READ from PIN_ENABLE
+        if (prof.hasEnable)
+        {
+            int enableLevel = digitalRead(PIN_ENABLE);
+            enabled = prof.enableActiveHigh ? (enableLevel == HIGH) : (enableLevel == LOW);
         }
     }
 
@@ -277,19 +280,15 @@ public:
         }
     }
 
-    // Toggle enable if available in the profile.
-    void toggleEnable()
+    // Read ENABLE input status if available in the profile.
+    // Note: ENABLE is now an input pin, so we read it instead of toggling
+    bool isEnabled() const
     {
-        if (prof.hasEnable)
-        {
-            enabled = !enabled;
-            applyOutputs();
+        if (!prof.hasEnable)
+            return true; // Assume enabled if not present
 
-#if DEBUG_MOTOR
-            Serial.print("Enable toggled to ");
-            Serial.println(enabled ? "ON" : "OFF");
-#endif
-        }
+        int enableLevel = digitalRead(PIN_ENABLE);
+        return prof.enableActiveHigh ? (enableLevel == HIGH) : (enableLevel == LOW);
     }
 
     // Read LD (fault/alarm) input, honoring profile polarity.

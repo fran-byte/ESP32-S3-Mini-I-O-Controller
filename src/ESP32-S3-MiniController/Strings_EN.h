@@ -98,7 +98,7 @@ static const Strings STR_EN = {
     "LD:",                                           // ld
     "ALARM",                                         // alarm
     "OK",                                            // ok
-    "UP/DOWN: Speed  SEL: Menu  HOLD SEL: Back/Start-Stop", // footer_home
+    "UP/DN:Speed L:Diag R:Menu", // footer_home
 
     // ---------------- Menu ----------------
     "SETTINGS",                                      // menu
@@ -114,7 +114,7 @@ static const Strings STR_EN = {
     "Language/Telemetry",                            // m_settings
     "About",                                         // m_about
     "Back",                                          // m_back
-    "UP/DOWN=Move  SEL=Select",                      // footer_menu
+    "UP/DN=Move L=Back R=Select",                      // footer_menu
 
     // ---------------- Wizard ----------------
     "Name:",                                         // w_name
@@ -133,10 +133,10 @@ static const Strings STR_EN = {
     "Save profile?",                                 // w_save
     "YES",                                           // yes
     "NO",                                            // no
-    "UP/DOWN=Change  SEL=Next",                      // hint_yesno
-    "UP/DOWN=Move  SEL=OK",                          // hint_choice
-    "UP/DOWN=Change  SEL=OK",                        // hint_number
-    "UP/DN=Char SEL=Next/END",                       // hint_text
+    "UP/DN=Change L=Back R=Next",                      // hint_yesno
+    "UP/DN=Move L=Back R=OK",                          // hint_choice
+    "UP/DN=Change L=Back R=OK",                        // hint_number
+    "UP/DN=Char L=Back R=Next/END",                    // hint_text
 
     // ---------------- Settings ----------------
     "SETTINGS",                                      // s_title
@@ -155,5 +155,5 @@ static const Strings STR_EN = {
 
     // ---------------- Diagnostics ------------
     "DIAGNOSTICS",                                   // diag_title
-    "LEFT to exit"                                   // diag_exit
+    "LEFT to exit"                                   // diag_hint
 };

@@ -316,31 +316,26 @@ private:
             }
         }
 
-        // SELECT short -> open main menu
+        // LEFT: Go to diagnostics
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Going to DIAG");
+#endif
+            state = DIAG;
+            needRedraw = true;
+        }
+
+        // RIGHT -> open main menu
         if (btn->rightPressed())
         {
 #if DEBUG_BUTTONS
-            Serial.println("[UI] SELECT short: Going to MENU");
+            Serial.println("[UI] RIGHT: Going to MENU");
 #endif
             state = MENU;
             menuIndex = 0;
             needRedraw = true;
             delay(150); // small debounce / UX pause
-        }
-
-        // SELECT long -> start/stop motor
-        if (btn->rightPressed())
-        {
-#if DEBUG_MOTOR
-            Serial.print("[UI] SELECT long: ");
-            Serial.println(motor->running ? "STOP" : "START");
-#endif
-            if (motor->running)
-                motor->stop();
-            else
-                motor->start();
-            needRedraw = true;
-            delay(200); // UX pause
         }
     }
 
@@ -435,7 +430,18 @@ private:
             needRedraw = true;
         }
 
-        // Short SELECT: handle action by matching index in order
+        // LEFT: Back to HOME
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Back to HOME from MENU");
+#endif
+            state = HOME;
+            needRedraw = true;
+            return;
+        }
+
+        // Short RIGHT: handle action by matching index in order
         if (btn->rightPressed())
         {
             delay(100); // small UX pause
@@ -558,7 +564,19 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        // Short SELECT
+        // LEFT: Back to MENU
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Back to MENU from SELECT_MOTOR");
+#endif
+            state = MENU;
+            menuIndex = 0;
+            needRedraw = true;
+            return;
+        }
+
+        // Short RIGHT
         if (btn->rightPressed())
         {
             // Last item is Back
@@ -1063,6 +1081,18 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
+        // LEFT: Back to MENU
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Back to MENU from SETTINGS");
+#endif
+            state = MENU;
+            menuIndex = 0;
+            needRedraw = true;
+            return;
+        }
+
         if (btn->rightPressed())
         {
             int c = 0;
@@ -1104,6 +1134,18 @@ private:
             menuIndex--;
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
+
+        // LEFT: Back to SETTINGS
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Back to SETTINGS from SETTINGS_LANG");
+#endif
+            state = SETTINGS;
+            menuIndex = 0;
+            needRedraw = true;
+            return;
+        }
 
         if (btn->rightPressed())
         {
@@ -1148,6 +1190,18 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
+        // LEFT: Back to SETTINGS
+        if (btn->leftPressed())
+        {
+#if DEBUG_BUTTONS
+            Serial.println("[UI] LEFT: Back to SETTINGS from SETTINGS_TELE");
+#endif
+            state = SETTINGS;
+            menuIndex = 0;
+            needRedraw = true;
+            return;
+        }
+
         if (btn->rightPressed())
         {
             if (menuIndex == 0) // Toggle telemetry
@@ -1173,10 +1227,10 @@ private:
         drawMenuList(items, n);
     }
 
-    // About screen—press SELECT to go back to MENU.
+    // About screen—press LEFT or RIGHT to go back to MENU.
     void handleAbout()
     {
-        if (btn->rightPressed())
+        if (btn->leftPressed() || btn->rightPressed())
         {
             state = MENU;
             menuIndex = 0;
@@ -1210,26 +1264,27 @@ private:
     }
 
     // Diagnostics screen: live button states, LD, RPM, frequency, direction.
-    // Hold LEFT to exit back to HOME.
+    // Press LEFT to exit back to HOME.
     void handleDiag()
     {
-       // RIGHT long -> salir a HOME
-        if (btn->rightLongPress())
+       // LEFT -> salir a HOME
+        if (btn->leftPressed())
         {
             state = HOME;
             needRedraw = true;
 #if DEBUG_BUTTONS
-            Serial.println("[UI] Back to HOME from Diag");
+            Serial.println("[UI] LEFT: Back to HOME from Diag");
 #endif
             return;
         }
 
         // Always redraw live diagnostics
         char l1[32], l2[32], l3[32];
-        snprintf(l1, sizeof(l1), "UP:%d DN:%d SEL:%d",
+        snprintf(l1, sizeof(l1), "U:%d D:%d L:%d R:%d",
                  btn->rawUpLow() ? 1 : 0,
                  btn->rawDownLow() ? 1 : 0,
-                 btn->rawSelLow() ? 1 : 0);
+                 btn->rawLeftLow() ? 1 : 0,
+                 btn->rawRightLow() ? 1 : 0);
 
         int ld = digitalRead(PIN_LD);
         snprintf(l2, sizeof(l2), "LD:%d FG-rpm:%lu",
