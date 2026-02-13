@@ -12,6 +12,8 @@
 class UI
 {
 public:
+    // Initialize UI with display, input, storage and motor runtime references.
+    // Shows a brief intro screen and adopts current language from MotorRuntime.
     void begin(U8G2 &d, Buttons &b, ProfileStore &store, MotorRuntime &m)
     {
         disp = &d;
@@ -23,18 +25,22 @@ public:
         lang = motor->getLanguage();
     }
 
+    // Change current language and persist via MotorRuntime.
     void setLanguage(Language L)
     {
         lang = L;
         motor->setLanguage(L);
     }
 
+    // Go to HOME state and request a redraw.
     void home()
     {
         state = HOME;
         needRedraw = true;
     }
 
+    // Main UI update loop. Call this frequently from Arduino loop().
+    // It dispatches to handlers/drawers based on the current state.
     void loop()
     {
         switch (state)
@@ -82,6 +88,7 @@ public:
         }
     }
 
+    // Enter diagnostics mode at boot if UP+DOWN are both pressed.
     void checkDiagAtBoot()
     {
         if (btn->rawUpLow() && btn->rawDownLow())
@@ -95,6 +102,7 @@ public:
     }
 
 private:
+    // All UI states. Wizard steps are explicit to keep logic simple.
     enum State
     {
         HOME,
@@ -119,18 +127,20 @@ private:
         DIAG
     };
 
+    // Resolve the current string table based on language.
     const Strings &S() const { return (lang == LANG_EN) ? STR_EN : STR_ES; }
 
-    // Dibujar marco doble redondeado
+    // Draw a double rounded frame (outer + inner) as a decorative container.
     void drawDoubleFrame()
     {
-        // Marco exterior (con esquinas redondeadas)
+        // Outer rounded frame
         disp->drawRFrame(0, 0, 128, 64, 3);
 
-        // Marco interior (2 pixeles hacia dentro, con esquinas redondeadas)
+        // Inner rounded frame (inset by 2 px)
         disp->drawRFrame(2, 2, 124, 60, 2);
     }
 
+    // Generic header: title bar with inverted background.
     void header(const char *title)
     {
         disp->firstPage();
@@ -144,6 +154,7 @@ private:
         } while (disp->nextPage());
     }
 
+    // Initial splash screen shown at UI startup.
     void drawIntro()
     {
         disp->firstPage();
@@ -157,6 +168,8 @@ private:
         delay(900);
     }
 
+    // Render the HOME screen (header, RPM/speed, status lines, footer hints).
+    // Redraw is gated by 'needRedraw' for efficiency.
     void drawHome()
     {
         if (!needRedraw)
@@ -166,55 +179,54 @@ private:
         disp->firstPage();
         do
         {
-            // Header con nombre del motor y estado ON/OFF
+            // Header with motor name (or default) and ON/OFF status
             disp->setFont(u8g2_font_6x12_tf);
             const char *title = (motor->prof.name[0] ? motor->prof.name : S().hdr_home);
             disp->drawBox(0, 0, 128, 13);
             disp->setDrawColor(0);
 
-            // Nombre del motor a la izquierda
+            // Motor name (left)
             disp->drawStr(2, 10, title);
 
-            // Estado ON/OFF a la derecha
+            // ON/OFF status (right)
             const char *status = motor->running ? "ON" : "OFF";
-            int statusWidth = strlen(status) * 6; // 6 pixels por carácter
+            int statusWidth = strlen(status) * 6; // 6 px per character at 6x12 font
             disp->drawStr(128 - statusWidth - 2, 10, status);
 
             disp->setDrawColor(1);
 
-            int y = 22; // Posición Y inicial
+            int y = 22; // Initial Y for content
 
-            // RPM solo si tiene FG configurado (fuente normal 6x12)
+            // RPM (only if FG is available)
             disp->setFont(u8g2_font_6x12_tf);
-
             if (motor->prof.hasFG)
             {
                 char line[32];
                 snprintf(line, sizeof(line), "%s %lu", S().rpm, (unsigned long)motor->rpm);
                 disp->drawStr(2, y, line);
-                y += 11; // Espaciado
+                y += 11;
             }
 
-            // Velocidad (siempre mostrar)
+            // Target speed (Hz), always shown
             char spd[40];
             snprintf(spd, sizeof(spd), "%s %lu Hz", S().speed, (unsigned long)motor->targetHz);
             disp->drawStr(2, y, spd);
             y += 11;
 
-            // SECUNDARIAS (fuente pequeña 5x8): DIR y señales de estado
+            // Secondary lines (smaller font 5x8): DIR + optional BRAKE/ENABLE/LD
             disp->setFont(u8g2_font_5x8_tf);
 
-            // Array para almacenar textos de todas las señales
+            // Collect up to 4 status items to flow across lines.
             char statusItems[4][32]; // DIR + BRAKE + ENABLE + LD
             int itemCount = 0;
 
-            // DIR siempre es el primero
+            // DIR is always first
             char dirline[32];
             snprintf(dirline, sizeof(dirline), "%s %s", S().dir, (motor->dirCW ? S().cw : S().ccw));
             strcpy(statusItems[itemCount], dirline);
             itemCount++;
 
-            // BRAKE (si está configurado)
+            // BRAKE (if present)
             if (motor->prof.hasBrake)
             {
                 snprintf(statusItems[itemCount], sizeof(statusItems[itemCount]),
@@ -222,7 +234,7 @@ private:
                 itemCount++;
             }
 
-            // ENABLE (si está configurado)
+            // ENABLE (if present)
             if (motor->prof.hasEnable)
             {
                 snprintf(statusItems[itemCount], sizeof(statusItems[itemCount]),
@@ -230,7 +242,7 @@ private:
                 itemCount++;
             }
 
-            // LD (si está configurado) - mostrar con ✓ o ✗
+            // LD (if present), show as ✓ (OK) or ✗ (ALARM)
             if (motor->prof.hasLD)
             {
                 const char *ldSymbol = motor->ldAlarm() ? "✗" : "✓";
@@ -239,45 +251,44 @@ private:
                 itemCount++;
             }
 
-            // Distribuir los elementos en líneas
-            int currentX = 2;       // Posición X inicial
-            int maxLineWidth = 126; // Ancho máximo de línea
-            int currentLineY = y;   // Posición Y inicial
+            // Flow items with wrapping across lines
+            int currentX = 2;       // Start X
+            int maxLineWidth = 126; // Max width per line
+            int currentLineY = y;   // Start Y
 
             for (int i = 0; i < itemCount; i++)
             {
-                int itemWidth = strlen(statusItems[i]) * 5;
+                int itemWidth = strlen(statusItems[i]) * 5; // 5 px per char at 5x8 font
 
-                // Si el elemento no cabe en la línea actual, pasar a nueva línea
+                // Wrap to next line if it doesn't fit (except first item)
                 if (currentX + itemWidth > maxLineWidth && i > 0)
                 {
-                    currentLineY += 9; // Nueva línea (9 pixeles para fuente 5x8)
-                    currentX = 2;      // Reiniciar X
+                    currentLineY += 9; // advance line (approx line height)
+                    currentX = 2;
                 }
 
-                // Dibujar el elemento
+                // Draw item
                 disp->drawStr(currentX, currentLineY, statusItems[i]);
 
-                // Actualizar posición X para el próximo elemento
-                currentX += itemWidth + 8; // 8 pixeles de separación
+                // Advance X with spacing
+                currentX += itemWidth + 8;
             }
 
-            // Actualizar Y para footer
+            // Footer help/hints aligned at bottom
             y = currentLineY + 9;
-
-            // Footer (siempre al final)
             disp->setFont(u8g2_font_5x8_tf);
             disp->drawStr(2, 63, S().footer_home);
         } while (disp->nextPage());
     }
 
+    // Handle input on HOME screen: step speed, open menu, start/stop on long press.
     void updateHome()
     {
         static unsigned long lastSpeedChange = 0;
-        const unsigned long SPEED_DELAY = 150;
+        const unsigned long SPEED_DELAY = 150; // rate-limit for speed changes
         unsigned long now = millis();
 
-        // UP button
+        // UP: increase speed (coarse step strategy in MotorRuntime)
         if (btn->upPressed())
         {
             if (now - lastSpeedChange > SPEED_DELAY)
@@ -291,7 +302,7 @@ private:
             }
         }
 
-        // DOWN button
+        // DOWN: decrease speed
         if (btn->downPressed())
         {
             if (now - lastSpeedChange > SPEED_DELAY)
@@ -305,7 +316,7 @@ private:
             }
         }
 
-        // SELECT short -> menu
+        // SELECT short -> open main menu
         if (btn->selPressed())
         {
 #if DEBUG_BUTTONS
@@ -314,10 +325,10 @@ private:
             state = MENU;
             menuIndex = 0;
             needRedraw = true;
-            delay(150);
+            delay(150); // small debounce / UX pause
         }
 
-        // SELECT long -> start/stop
+        // SELECT long -> start/stop motor
         if (btn->selLong())
         {
 #if DEBUG_MOTOR
@@ -329,10 +340,11 @@ private:
             else
                 motor->start();
             needRedraw = true;
-            delay(200);
+            delay(200); // UX pause
         }
     }
 
+    // Render a generic, scrollable, framed menu list with a header and footer hints.
     void drawMenuList(const char **items, int n)
     {
         if (n == 0)
@@ -341,25 +353,26 @@ private:
         disp->firstPage();
         do
         {
-            // Dibujar marco doble redondeado
+            // Decorative double rounded frame
             drawDoubleFrame();
 
             disp->setFont(u8g2_font_6x12_tf);
-            // Header con fondo
+            // Header bar with rounded background
             disp->drawRBox(4, 4, 120, 13, 2);
             disp->setDrawColor(0);
             disp->drawStr(6, 14, S().menu);
             disp->setDrawColor(1);
 
             int lineHeight = 10;
-            int maxVisibleLines = 3; // Reducido para dejar espacio al marco
+            int maxVisibleLines = 3; // keep small to preserve margins
 
+            // Keep scroll window covering the selected index
             if (menuIndex < menuScroll)
                 menuScroll = menuIndex;
             if (menuIndex >= menuScroll + maxVisibleLines)
                 menuScroll = menuIndex - maxVisibleLines + 1;
 
-            int startY = 28; // Más abajo para dar espacio
+            int startY = 28; // content Y origin
 
             for (int i = 0; i < maxVisibleLines; i++)
             {
@@ -371,6 +384,7 @@ private:
 
                 if (idx == menuIndex)
                 {
+                    // Highlight the selected row
                     disp->drawRBox(6, y - 8, 116, lineHeight, 2);
                     disp->setDrawColor(0);
                     disp->drawStr(8, y, items[idx]);
@@ -382,13 +396,15 @@ private:
                 }
             }
 
-            // Footer
+            // Footer hints
             disp->setFont(u8g2_font_5x8_tf);
             disp->drawStr(6, 60, S().footer_menu);
 
         } while (disp->nextPage());
     }
 
+    // Main menu: build dynamic items according to runtime (running, brake presence, profiles).
+    // Short SELECT executes action, long SELECT is intentionally disabled in menus.
     void handleMenu()
     {
         const char *items[12];
@@ -404,8 +420,9 @@ private:
             items[n++] = S().m_delete_active;
         items[n++] = S().m_settings;
         items[n++] = S().m_about;
-        items[n++] = S().m_back; // ← NUEVA OPCIÓN
+        items[n++] = S().m_back; // Back/return to HOME
 
+        // Navigation
         if (btn->upPressed() && menuIndex > 0)
         {
             menuIndex--;
@@ -418,11 +435,10 @@ private:
             needRedraw = true;
         }
 
-        // SELECT LARGO ya no hace nada en el menú
-
+        // Short SELECT: handle action by matching index in order
         if (btn->selPressed())
         {
-            delay(100);
+            delay(100); // small UX pause
             int c = 0;
 
             if (menuIndex == c++)
@@ -495,7 +511,7 @@ private:
                 needRedraw = true;
                 return;
             }
-            // NUEVA OPCIÓN: Atrás/Back
+            // Back to HOME
             if (menuIndex == c++)
             {
                 state = HOME;
@@ -511,6 +527,7 @@ private:
         }
     }
 
+    // Motor selection list with a trailing "Back" entry.
     void handleSelectMotor()
     {
         int profileCount = pst->getCount();
@@ -520,7 +537,7 @@ private:
             return;
         }
 
-        // Crear lista con perfiles + opción Atrás
+        // Build list: profile names + final Back option
         static char names[MAX_PROFILES + 1][22];
         static const char *items[MAX_PROFILES + 1];
         int n = 0;
@@ -531,20 +548,20 @@ private:
             nm.toCharArray(names[i], sizeof(names[i]));
             items[n++] = names[i];
         }
-        // Añadir opción Atrás/Back al final
+        // Append "Back"
         strcpy(names[profileCount], S().m_back);
         items[n++] = names[profileCount];
 
+        // Navigation
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        // SELECT LARGO ya no hace nada
-
+        // Short SELECT
         if (btn->selPressed())
         {
-            // Si es la última opción (Atrás/Back)
+            // Last item is Back
             if (menuIndex == profileCount)
             {
                 state = MENU;
@@ -552,7 +569,7 @@ private:
                 needRedraw = true;
                 return;
             }
-            // Si es un perfil de motor
+            // Any other item: activate profile and go home
             else
             {
                 pst->setActive(menuIndex);
@@ -568,6 +585,7 @@ private:
         drawMenuList(items, n);
     }
 
+    // Prepare temporary profile and buffers for the Add Profile wizard.
     void enterAddWizard()
     {
         memset(&tmp, 0, sizeof(tmp));
@@ -578,6 +596,7 @@ private:
         needRedraw = true;
     }
 
+    // Advance wizard state machine according to current step and flags.
     void wizardNext()
     {
         if (state == ADD_NAME)
@@ -605,9 +624,10 @@ private:
         needRedraw = true;
     }
 
+    // Draw current wizard step. For ADD_NAME we always redraw for blinking cursor.
     void drawWizard()
     {
-        // En modo ADD_NAME, siempre redibujar para cursor parpadeante
+        // For name editing we refresh every frame to show blinking cursor/END box
         if (state == ADD_NAME)
         {
             needRedraw = true;
@@ -626,15 +646,15 @@ private:
         {
             strcpy(line1, S().w_name);
 
-            // Preparar line2 mostrando "END" si el carácter actual es el marcador
+            // Prepare line2 from edit buffer.
             const char END_MARKER = 0x7F;
             strcpy(line2, editName);
 
-            // Si el carácter en la posición actual es END_MARKER, mostrar como recuadro pequeño
+            // If current position holds END_MARKER, show special END box instead of a char
             if (editName[editPos] == END_MARKER)
             {
-                // Reemplazar temporalmente para mostrar
-                line2[editPos] = 0; // Terminar string antes de END
+                // Temporarily terminate for drawing before the END box
+                line2[editPos] = 0;
             }
 
             strcpy(hint, S().hint_text);
@@ -701,44 +721,44 @@ private:
             strcpy(hint, S().hint_yesno);
         }
 
+        // Draw wizard screen content
         disp->firstPage();
         do
         {
             disp->setFont(u8g2_font_6x12_tf);
+            // Header bar for wizard
             disp->drawBox(0, 0, 128, 13);
             disp->setDrawColor(0);
             disp->drawStr(2, 10, S().m_add_motor);
             disp->setDrawColor(1);
+
+            // Question/prompt
             disp->drawStr(2, 28, line1);
 
-            // Dibujar line2 con cursor si estamos en ADD_NAME
+            // Value / editable line with cursor handling in ADD_NAME
             if (state == ADD_NAME)
             {
                 const char END_MARKER = 0x7F;
 
-                // Dibujar el texto normal
+                // Draw current text line
                 disp->drawStr(2, 42, line2);
 
-                // Si el carácter actual es END_MARKER, dibujar recuadro "END"
+                // If current char is END marker, draw a small "END" box
                 if (editName[editPos] == END_MARKER)
                 {
                     int endX = 2 + (editPos * 6);
 
-                    // Dibujar recuadro pequeño
+                    // Small rectangle with "END" inside (using 4x6 font)
                     disp->drawFrame(endX, 34, 18, 10);
-
-                    // Dibujar texto "END" pequeño dentro
                     disp->setFont(u8g2_font_4x6_tr);
                     disp->drawStr(endX + 1, 42, "END");
                     disp->setFont(u8g2_font_6x12_tf);
                 }
                 else
                 {
-                    // Calcular posición X del cursor (6 pixels por carácter)
+                    // Blinking underline cursor below the current position
                     int cursorX = 2 + (editPos * 6);
-
-                    // Dibujar cursor parpadeante (línea bajo el carácter actual)
-                    if ((millis() / 500) % 2 == 0) // Parpadeo cada 500ms
+                    if ((millis() / 500) % 2 == 0) // blink every 500 ms
                     {
                         disp->drawLine(cursorX, 44, cursorX + 5, 44);
                     }
@@ -746,32 +766,34 @@ private:
             }
             else
             {
-                // Para otros estados, solo dibujar line2 normalmente
+                // Non-edit steps: just draw the value line
                 disp->drawStr(2, 42, line2);
             }
 
+            // Footer hint
             disp->setFont(u8g2_font_5x8_tf);
             disp->drawStr(2, 62, hint);
         } while (disp->nextPage());
     }
 
+    // Handle input for all wizard steps (name editor, toggles, numeric fields, save).
     void handleWizard()
     {
         if (state == ADD_NAME)
         {
-            // Alfabeto incluyendo un marcador especial "END"
-            // A-Z, 0-9, espacio, -, _, y un carácter especial para END
-            const char END_MARKER = 0x7F; // Carácter especial que usaremos como "END"
+            // Inline name editor with a special END marker to finish entry.
+            // Alphabet cycle: A-Z -> 0-9 -> space -> '-' -> '_' -> END -> (wrap)
+            const char END_MARKER = 0x7F;
 
             if (btn->upPressed())
             {
-                // Inicializar con 'A' si es el primer carácter
+                // Initialize with 'A' on first edit
                 if (editName[editPos] == 0)
                     editName[editPos] = 'A';
                 else
                 {
                     editName[editPos]++;
-                    // Ciclo: A-Z, 0-9, espacio, -, _, END_MARKER
+                    // Forward cycle
                     if (editName[editPos] == 'Z' + 1)
                         editName[editPos] = '0';
                     else if (editName[editPos] == '9' + 1)
@@ -790,13 +812,13 @@ private:
 
             if (btn->downPressed())
             {
-                // Inicializar con 'A' si es el primer carácter
+                // Initialize with 'A' on first edit
                 if (editName[editPos] == 0)
                     editName[editPos] = 'A';
                 else
                 {
                     editName[editPos]--;
-                    // Ciclo inverso
+                    // Reverse cycle across allowed chars and END marker
                     if (editName[editPos] < 'A' && editName[editPos] != END_MARKER && editName[editPos] != '_' && editName[editPos] != '-' && editName[editPos] != ' ')
                     {
                         editName[editPos] = END_MARKER;
@@ -815,16 +837,15 @@ private:
                 needRedraw = true;
             }
 
-            // SELECT: Avanzar o finalizar si es END
+            // SELECT: advance; if current char is END, finalize the name
             if (btn->selPressed())
             {
-                // Si el carácter actual es END_MARKER, finalizar
                 if (editName[editPos] == END_MARKER)
                 {
-                    // Eliminar el END_MARKER y finalizar
+                    // Remove END marker and finish
                     editName[editPos] = 0;
 
-                    // Si el nombre está vacío, poner "Motor"
+                    // Default fallback if empty
                     if (editName[0] == 0)
                     {
                         strcpy(editName, "Motor");
@@ -839,10 +860,11 @@ private:
                     return;
                 }
 
-                // Si no es END, inicializar si está vacío y avanzar
+                // Ensure current char is initialized
                 if (editName[editPos] == 0)
                     editName[editPos] = 'A';
 
+                // Move to next char position, or finalize if buffer end reached
                 if (editPos < 18)
                 {
                     editPos++;
@@ -853,7 +875,6 @@ private:
                 }
                 else
                 {
-                    // Llegamos al final (posición 18)
                     strncpy(tmp.name, editName, sizeof(tmp.name));
                     wizardNext();
                 }
@@ -862,6 +883,8 @@ private:
             return;
         }
 
+        // The remaining wizard states toggle or adjust values with UP/DOWN,
+        // and advance with SELECT.
         if (state == ADD_Q_BRAKE)
         {
             if (btn->upPressed() || btn->downPressed())
@@ -1010,36 +1033,35 @@ private:
             {
                 if (wizardSaveChoice)
                 {
-                    // Guardar perfil
+                    // Save profile to storage and make it active
                     pst->append(tmp);
                     pst->setActive(pst->getCount() - 1);
                     MotorProfile mp;
                     pst->loadActive(mp);
                     motor->applyProfile(mp);
                 }
-                // Si es NO, no guardar
+                // If "NO", just exit without saving
                 state = HOME;
                 needRedraw = true;
-                wizardSaveChoice = true; // Reset para la próxima vez
+                wizardSaveChoice = true; // reset for next time
                 return;
             }
         }
     }
 
+    // Settings main menu (Language, Telemetry, Back).
     void handleSettings()
     {
         const char *items[4];
         int n = 0;
         items[n++] = S().s_language;
         items[n++] = S().s_telemetry;
-        items[n++] = S().m_back; // ← NUEVA OPCIÓN
+        items[n++] = S().m_back; // Back option
 
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
-
-        // SELECT LARGO ya no hace nada
 
         if (btn->selPressed())
         {
@@ -1057,7 +1079,7 @@ private:
                 needRedraw = true;
                 return;
             }
-            // NUEVA OPCIÓN: Atrás/Back
+            // Back to main menu
             if (menuIndex == c++)
             {
                 state = MENU;
@@ -1069,25 +1091,23 @@ private:
         drawMenuList(items, n);
     }
 
+    // Language selection (English, Español, Back).
     void handleSettingsLang()
     {
         const char *items[3];
         int n = 0;
         items[n++] = S().s_lang_en;
         items[n++] = S().s_lang_es;
-        items[n++] = S().m_back; // ← NUEVA OPCIÓN
+        items[n++] = S().m_back; // Back option
 
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        // SELECT LARGO ya no hace nada
-
         if (btn->selPressed())
         {
-            // Opción English
-            if (menuIndex == 0)
+            if (menuIndex == 0) // English
             {
                 lang = LANG_EN;
                 motor->setLanguage(lang);
@@ -1095,8 +1115,7 @@ private:
                 needRedraw = true;
                 return;
             }
-            // Opción Español
-            if (menuIndex == 1)
+            if (menuIndex == 1) // Español
             {
                 lang = LANG_ES;
                 motor->setLanguage(lang);
@@ -1104,8 +1123,7 @@ private:
                 needRedraw = true;
                 return;
             }
-            // Opción Atrás/Back
-            if (menuIndex == 2)
+            if (menuIndex == 2) // Back
             {
                 state = SETTINGS;
                 menuIndex = 0;
@@ -1116,14 +1134,15 @@ private:
         drawMenuList(items, n);
     }
 
+    // Telemetry toggle screen (On/Off) with Back.
     void handleSettingsTele()
     {
         const char *items[2];
         int n = 0;
         items[n++] = motor->telemetry() ? S().s_telemetry_on : S().s_telemetry_off;
-        items[n++] = S().m_back; // ← OPCIÓN ATRÁS
+        items[n++] = S().m_back; // Back option
 
-        // Navegación del menú
+        // Navigation
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
         if (btn->downPressed() && menuIndex < n - 1)
@@ -1131,17 +1150,17 @@ private:
 
         if (btn->selPressed())
         {
-            if (menuIndex == 0) // Opción de telemetría ON/OFF
+            if (menuIndex == 0) // Toggle telemetry
             {
                 motor->setTelemetry(!motor->telemetry());
                 needRedraw = true;
 #if DEBUG_BUTTONS
                 Serial.println("[UI] Telemetry toggled");
 #endif
-                // Cambiar el texto del primer ítem
+                // Update item label after toggling
                 items[0] = motor->telemetry() ? S().s_telemetry_on : S().s_telemetry_off;
             }
-            else if (menuIndex == 1) // Opción Atrás
+            else if (menuIndex == 1) // Back
             {
                 state = SETTINGS;
                 menuIndex = 0;
@@ -1150,13 +1169,13 @@ private:
             }
         }
 
-        // Dibujar el menú de telemetría
+        // Draw telemetry menu
         drawMenuList(items, n);
     }
 
+    // About screen—press SELECT to go back to MENU.
     void handleAbout()
     {
-        // Permitir volver con SELECT (sin mostrar hint)
         if (btn->selPressed())
         {
             state = MENU;
@@ -1168,14 +1187,14 @@ private:
             return;
         }
 
-        // Siempre redibujar
+        // Always redraw (static content but cheap to render)
         char build[24];
         snprintf(build, sizeof(build), "%s %s", S().about_build, __DATE__);
 
         disp->firstPage();
         do
         {
-            // Marco doble redondeado
+            // Framed header
             drawDoubleFrame();
 
             disp->setFont(u8g2_font_6x12_tf);
@@ -1186,13 +1205,15 @@ private:
             disp->drawStr(8, 30, S().about_author);
             disp->drawStr(8, 42, S().about_version);
             disp->drawStr(8, 54, build);
-            // Sin hint - SELECT simplemente funciona
+            // No footer hint; SELECT simply returns
         } while (disp->nextPage());
     }
 
+    // Diagnostics screen: live button states, LD, RPM, frequency, direction.
+    // Hold SELECT (long) to exit back to HOME.
     void handleDiag()
     {
-        // Leer estado de botones PRIMERO
+        // Check exit (long select) first to keep UX responsive.
         if (btn->selLong())
         {
             state = HOME;
@@ -1203,7 +1224,7 @@ private:
             return;
         }
 
-        // Siempre redibujar para mostrar datos en tiempo real
+        // Always redraw live diagnostics
         char l1[32], l2[32], l3[32];
         snprintf(l1, sizeof(l1), "UP:%d DN:%d SEL:%d",
                  btn->rawUpLow() ? 1 : 0,
@@ -1235,15 +1256,19 @@ private:
         } while (disp->nextPage());
     }
 
+    // -------------------- Dependencies & State --------------------
     U8G2 *disp = nullptr;
     Buttons *btn = nullptr;
     ProfileStore *pst = nullptr;
     MotorRuntime *motor = nullptr;
+
     State state = HOME;
     bool needRedraw = true;
     int menuIndex = 0;
     int menuScroll = 0;
     Language lang = LANG_ES;
+
+    // Wizard temp storage and editor buffers
     MotorProfile tmp;
     char editName[20] = {0};
     int editPos = 0;
