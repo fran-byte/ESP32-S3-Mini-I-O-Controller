@@ -78,5 +78,5 @@ static const Strings STR_ES = {
 
     // ---------------- Diagnostics ----------------
     "DIAGNOSTICO",                                   // diag_title
-    "MANTEN SEL para salir"                          // diag_hint
+    "LEFT para salir"                                // diag_exit
 };
