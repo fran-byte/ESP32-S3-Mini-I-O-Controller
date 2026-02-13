@@ -155,5 +155,5 @@ static const Strings STR_EN = {
 
     // ---------------- Diagnostics ------------
     "DIAGNOSTICS",                                   // diag_title
-    "HOLD SEL to exit"                               // diag_hint
+    "LEFT to exit"                                   // diag_exit
 };
