@@ -415,7 +415,6 @@ private:
             items[n++] = S().m_delete_active;
         items[n++] = S().m_settings;
         items[n++] = S().m_about;
-        items[n++] = S().m_back; // Back/return to HOME
 
         // Navigation
         if (btn->upPressed() && menuIndex > 0)
@@ -517,13 +516,6 @@ private:
                 needRedraw = true;
                 return;
             }
-            // Back to HOME
-            if (menuIndex == c++)
-            {
-                state = HOME;
-                needRedraw = true;
-                return;
-            }
         }
 
         if (needRedraw)
@@ -533,7 +525,7 @@ private:
         }
     }
 
-    // Motor selection list with a trailing "Back" entry.
+    // Motor selection list.
     void handleSelectMotor()
     {
         int profileCount = pst->getCount();
@@ -543,9 +535,9 @@ private:
             return;
         }
 
-        // Build list: profile names + final Back option
-        static char names[MAX_PROFILES + 1][22];
-        static const char *items[MAX_PROFILES + 1];
+        // Build list: profile names only (no Back option needed)
+        static char names[MAX_PROFILES][22];
+        static const char *items[MAX_PROFILES];
         int n = 0;
 
         for (int i = 0; i < profileCount; i++)
@@ -554,9 +546,6 @@ private:
             nm.toCharArray(names[i], sizeof(names[i]));
             items[n++] = names[i];
         }
-        // Append "Back"
-        strcpy(names[profileCount], S().m_back);
-        items[n++] = names[profileCount];
 
         // Navigation
         if (btn->upPressed() && menuIndex > 0)
@@ -576,28 +565,16 @@ private:
             return;
         }
 
-        // Short RIGHT
+        // RIGHT: Activate selected profile and go home
         if (btn->rightPressed())
         {
-            // Last item is Back
-            if (menuIndex == profileCount)
-            {
-                state = MENU;
-                menuIndex = 0;
-                needRedraw = true;
-                return;
-            }
-            // Any other item: activate profile and go home
-            else
-            {
-                pst->setActive(menuIndex);
-                MotorProfile mp;
-                pst->loadActive(mp);
-                motor->applyProfile(mp);
-                state = HOME;
-                needRedraw = true;
-                return;
-            }
+            pst->setActive(menuIndex);
+            MotorProfile mp;
+            pst->loadActive(mp);
+            motor->applyProfile(mp);
+            state = HOME;
+            needRedraw = true;
+            return;
         }
 
         drawMenuList(items, n);
@@ -1067,14 +1044,13 @@ private:
         }
     }
 
-    // Settings main menu (Language, Telemetry, Back).
+    // Settings main menu (Language, Telemetry).
     void handleSettings()
     {
-        const char *items[4];
+        const char *items[2];
         int n = 0;
         items[n++] = S().s_language;
         items[n++] = S().s_telemetry;
-        items[n++] = S().m_back; // Back option
 
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
@@ -1109,26 +1085,17 @@ private:
                 needRedraw = true;
                 return;
             }
-            // Back to main menu
-            if (menuIndex == c++)
-            {
-                state = MENU;
-                menuIndex = 0;
-                needRedraw = true;
-                return;
-            }
         }
         drawMenuList(items, n);
     }
 
-    // Language selection (English, Español, Back).
+    // Language selection (English, Español).
     void handleSettingsLang()
     {
-        const char *items[3];
+        const char *items[2];
         int n = 0;
         items[n++] = S().s_lang_en;
         items[n++] = S().s_lang_es;
-        items[n++] = S().m_back; // Back option
 
         if (btn->upPressed() && menuIndex > 0)
             menuIndex--;
@@ -1165,24 +1132,16 @@ private:
                 needRedraw = true;
                 return;
             }
-            if (menuIndex == 2) // Back
-            {
-                state = SETTINGS;
-                menuIndex = 0;
-                needRedraw = true;
-                return;
-            }
         }
         drawMenuList(items, n);
     }
 
-    // Telemetry toggle screen (On/Off) with Back.
+    // Telemetry toggle screen (On/Off).
     void handleSettingsTele()
     {
-        const char *items[2];
+        const char *items[1];
         int n = 0;
         items[n++] = motor->telemetry() ? S().s_telemetry_on : S().s_telemetry_off;
-        items[n++] = S().m_back; // Back option
 
         // Navigation
         if (btn->upPressed() && menuIndex > 0)
@@ -1204,23 +1163,14 @@ private:
 
         if (btn->rightPressed())
         {
-            if (menuIndex == 0) // Toggle telemetry
-            {
-                motor->setTelemetry(!motor->telemetry());
-                needRedraw = true;
+            // Toggle telemetry
+            motor->setTelemetry(!motor->telemetry());
+            needRedraw = true;
 #if DEBUG_BUTTONS
-                Serial.println("[UI] Telemetry toggled");
+            Serial.println("[UI] Telemetry toggled");
 #endif
-                // Update item label after toggling
-                items[0] = motor->telemetry() ? S().s_telemetry_on : S().s_telemetry_off;
-            }
-            else if (menuIndex == 1) // Back
-            {
-                state = SETTINGS;
-                menuIndex = 0;
-                needRedraw = true;
-                return;
-            }
+            // Update item label after toggling
+            items[0] = motor->telemetry() ? S().s_telemetry_on : S().s_telemetry_off;
         }
 
         // Draw telemetry menu
