@@ -101,7 +101,7 @@ On the external side, you must verify whether the **external circuit already inc
 **Main modules:**
 
 *   `Config.h` – Pins, constants (I²C pins, debounce times, LEDC bits, RPM sample period, debug flags, language enum).
-*   `Buttons.h` – Poll‑based debounce (50 ms), falling‑edge events, **one‑shot** getters (`upPressed()`, `downPressed()`, `selPressed()`), and **long‑press** (`selLong()`).
+*   `Buttons.h` – Poll‑based debounce (50 ms), falling‑edge events, **one‑shot** getters (`upPressed()`, `downPressed()`, `rightPressed()`), and **long‑press** (`rightPressed()`).
 *   `Profiles.h` – `MotorProfile` (name, hasBrake/FG/LD/Stop/Enable, polarities, PPR, maxClockHz) + `ProfileStore` (NVS persistence under `"motors"` namespace with `count` and `active` indices).
 *   `Motor.h` – `MotorRuntime`: LEDC clock control, direction/brake/enable/stop outputs with profile‑driven polarities, FG **ISR** counting, RPM compute & **FG‑loss safety**, telemetry, language persistence (`"sys"` namespace).
 *   `Strings_EN.h`, `Strings_ES.h` – Localized UI string tables (`struct Strings`).
@@ -171,7 +171,7 @@ On the external side, you must verify whether the **external circuit already inc
 
 *   Inputs are **`INPUT_PULLUP`** and **active‑LOW**.
 *   **50 ms debounce**; **falling‑edge** generates one‑shot events.
-*   **`selLong()`** fires once when hold time exceeds `LONG_PRESS_MS` (default **600 ms**).
+*   **`rightPressed()`** fires once when hold time exceeds `LONG_PRESS_MS` (default **600 ms**).
 
 ***
 

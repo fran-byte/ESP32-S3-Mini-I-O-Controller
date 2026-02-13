@@ -317,7 +317,7 @@ private:
         }
 
         // SELECT short -> open main menu
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
 #if DEBUG_BUTTONS
             Serial.println("[UI] SELECT short: Going to MENU");
@@ -329,7 +329,7 @@ private:
         }
 
         // SELECT long -> start/stop motor
-        if (btn->selLong())
+        if (btn->rightPressed())
         {
 #if DEBUG_MOTOR
             Serial.print("[UI] SELECT long: ");
@@ -436,7 +436,7 @@ private:
         }
 
         // Short SELECT: handle action by matching index in order
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             delay(100); // small UX pause
             int c = 0;
@@ -559,7 +559,7 @@ private:
             menuIndex++;
 
         // Short SELECT
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             // Last item is Back
             if (menuIndex == profileCount)
@@ -838,7 +838,7 @@ private:
             }
 
             // SELECT: advance; if current char is END, finalize the name
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 if (editName[editPos] == END_MARKER)
                 {
@@ -892,7 +892,7 @@ private:
                 tmp.hasBrake = !tmp.hasBrake;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -905,7 +905,7 @@ private:
                 tmp.hasFG = !tmp.hasFG;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -918,7 +918,7 @@ private:
                 tmp.hasLD = !tmp.hasLD;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -931,7 +931,7 @@ private:
                 tmp.ldActiveLow = !tmp.ldActiveLow;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -944,7 +944,7 @@ private:
                 tmp.hasStop = !tmp.hasStop;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -957,7 +957,7 @@ private:
                 tmp.stopActiveHigh = !tmp.stopActiveHigh;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -970,7 +970,7 @@ private:
                 tmp.hasEnable = !tmp.hasEnable;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -983,7 +983,7 @@ private:
                 tmp.enableActiveHigh = !tmp.enableActiveHigh;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 wizardNext();
             }
@@ -1001,7 +1001,7 @@ private:
                 tmp.ppr--;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
                 wizardNext();
             return;
         }
@@ -1017,7 +1017,7 @@ private:
                 tmp.maxClockHz -= 1000;
                 needRedraw = true;
             }
-            if (btn->selPressed())
+            if (btn->rightPressed())
                 wizardNext();
             return;
         }
@@ -1029,7 +1029,7 @@ private:
                 needRedraw = true;
             }
 
-            if (btn->selPressed())
+            if (btn->rightPressed())
             {
                 if (wizardSaveChoice)
                 {
@@ -1063,7 +1063,7 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             int c = 0;
             if (menuIndex == c++)
@@ -1105,7 +1105,7 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             if (menuIndex == 0) // English
             {
@@ -1148,7 +1148,7 @@ private:
         if (btn->downPressed() && menuIndex < n - 1)
             menuIndex++;
 
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             if (menuIndex == 0) // Toggle telemetry
             {
@@ -1176,7 +1176,7 @@ private:
     // About screen—press SELECT to go back to MENU.
     void handleAbout()
     {
-        if (btn->selPressed())
+        if (btn->rightPressed())
         {
             state = MENU;
             menuIndex = 0;
