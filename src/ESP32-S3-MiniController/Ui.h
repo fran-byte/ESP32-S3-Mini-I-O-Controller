@@ -1214,7 +1214,7 @@ private:
     void handleDiag()
     {
        // RIGHT long -> salir a HOME
-        if (btn->rightLongPress))
+        if (btn->rightLongPress())
         {
             state = HOME;
             needRedraw = true;
