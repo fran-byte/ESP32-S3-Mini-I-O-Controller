@@ -4,7 +4,7 @@
 #include "Config.h"
 #include "Profiles.h"
 
-// Función auxiliar para max
+// Simple, header-only max helper to avoid <algorithm> on embedded targets.
 template <typename T>
 T simple_max(T a, T b) { return (a > b) ? a : b; }
 
@@ -13,20 +13,28 @@ class MotorRuntime
 public:
     void begin()
     {
-        pinMode(PIN_CLOCK, OUTPUT);
-        pinMode(PIN_DIR, OUTPUT);
-        pinMode(PIN_BRAKE, OUTPUT);
-        pinMode(PIN_STOP, OUTPUT);
-        pinMode(PIN_ENABLE, OUTPUT);
-        pinMode(PIN_FG, INPUT_PULLUP);
-        pinMode(PIN_LD, INPUT_PULLUP);
+        // ---------------- GPIO directions ----------------
+        pinMode(PIN_CLOCK,  OUTPUT);     // PWM/clock output for motor
+        pinMode(PIN_DIR,    OUTPUT);     // Direction output
+        pinMode(PIN_BRAKE,  OUTPUT);     // Optional brake line
+        pinMode(PIN_STOP,   OUTPUT);     // Optional stop line
+        pinMode(PIN_ENABLE, OUTPUT);     // Optional enable line
 
-        // Configurar PWM para ESP32 Core 3.x
+        pinMode(PIN_FG, INPUT_PULLUP);   // Tachometer input (FG), active edge = RISING
+        pinMode(PIN_LD, INPUT_PULLUP);   // Fault/alarm input (LD), polarity set by profile
+
+        // ---------------- LEDC clock setup ----------------
+        // Attach LEDC (ESP32 PWM) to PIN_CLOCK with an initial frequency and resolution.
+        // We start at 1 kHz and 8-bit resolution, but reattach dynamically in setClock().
         ledcAttach(PIN_CLOCK, 1000, LEDC_TIMER_BITS);
-        ledcWrite(PIN_CLOCK, 0);
+        ledcWrite(PIN_CLOCK, 0);         // Duty 0% (motor stopped)
 
+        // ---------------- Tachometer ISR ------------------
+        // Count FG pulses on rising edge to compute RPM periodically.
         attachInterrupt(digitalPinToInterrupt(PIN_FG), isrFG, RISING);
 
+        // ---------------- System settings (NVS) -----------
+        // Load persisted telemetry and language preferences.
         sysPrefs.begin("sys", false);
         telemetryOn = sysPrefs.getBool("tele", false);
         lang = (Language)sysPrefs.getUChar("lang", (uint8_t)LANG_ES);
@@ -39,14 +47,16 @@ public:
 #endif
     }
 
+    // Apply a new motor profile (I/O capabilities, limits, polarities, etc.)
+    // Resets runtime flags and targets to safe defaults.
     void applyProfile(const MotorProfile &p)
     {
-        prof = p;
-        dirCW = true;
-        brakeOn = false;
-        enabled = true;
-        running = false;
-        targetHz = 1000;
+        prof     = p;
+        dirCW    = true;
+        brakeOn  = false;
+        enabled  = true;
+        running  = false;
+        targetHz = 1000;       // Default target clock (Hz)
         applyOutputs();
 
 #if DEBUG_MOTOR
@@ -55,24 +65,32 @@ public:
 #endif
     }
 
+    // Push current runtime control state to hardware pins, honoring profile options:
+    //  - Direction line always active
+    //  - Brake/Enable/Stop only if present in profile, with correct active polarity
     void applyOutputs()
     {
         digitalWrite(PIN_DIR, dirCW ? HIGH : LOW);
+
         if (prof.hasBrake)
             digitalWrite(PIN_BRAKE, brakeOn ? HIGH : LOW);
+
         if (prof.hasEnable)
         {
             bool level = prof.enableActiveHigh ? enabled : !enabled;
             digitalWrite(PIN_ENABLE, level ? HIGH : LOW);
         }
+
         if (prof.hasStop)
         {
+            // When not running, assert STOP according to profile polarity.
             bool active = !running;
             bool level = prof.stopActiveHigh ? active : !active;
             digitalWrite(PIN_STOP, level ? HIGH : LOW);
         }
     }
 
+    // Start the motor at the current target frequency.
     void start()
     {
         running = true;
@@ -86,6 +104,7 @@ public:
 #endif
     }
 
+    // Stop the motor (clock = 0 Hz) and update control lines accordingly.
     void stop()
     {
         running = false;
@@ -97,21 +116,27 @@ public:
 #endif
     }
 
+    // Configure the LEDC clock frequency and duty cycle.
+    // Re-attaches LEDC with the requested frequency to minimize jitter.
     void setClock(uint32_t hz)
     {
         if (hz == 0)
         {
+            // Duty 0% to ensure no pulses; keep last configured frequency irrelevant.
             ledcWrite(PIN_CLOCK, 0);
             currentHz = 0;
             return;
         }
 
+        // Enforce profile limit.
         if (hz > prof.maxClockHz)
             hz = prof.maxClockHz;
 
+        // Reconfigure LEDC to the new frequency with the chosen resolution.
+        // Note: ledcDetach/Attach pattern avoids artifacts when changing freq.
         ledcDetach(PIN_CLOCK);
         ledcAttach(PIN_CLOCK, hz, LEDC_TIMER_BITS);
-        ledcWrite(PIN_CLOCK, 128); // 50% duty cycle
+        ledcWrite(PIN_CLOCK, 128); // ~50% duty with 8-bit resolution
         currentHz = hz;
 
 #if DEBUG_MOTOR
@@ -121,244 +146,5 @@ public:
 #endif
     }
 
-    void stepSpeedUp()
-    {
-        uint32_t oldTarget = targetHz;
-        
-        if (targetHz < prof.maxClockHz)
-        {
-            if (targetHz == 0)
-            {
-                targetHz = 100;
-            }
-            else if (targetHz < 1000)
-            {
-                targetHz += 100;
-            }
-            else if (targetHz < 5000)
-            {
-                targetHz += 500;
-            }
-            else
-            {
-                targetHz += 1000;
-            }
-        }
-        
-        if (targetHz > prof.maxClockHz)
-            targetHz = prof.maxClockHz;
-
-#if DEBUG_SPEED
-        Serial.print("Speed UP: ");
-        Serial.print(oldTarget);
-        Serial.print(" -> ");
-        Serial.print(targetHz);
-        Serial.print(" Hz (running: ");
-        Serial.print(running ? "YES" : "NO");
-        Serial.println(")");
-#endif
-
-        if (running)
-        {
-            setClock(targetHz);
-        }
-    }
-
-    void stepSpeedDown()
-    {
-        uint32_t oldTarget = targetHz;
-        
-        if (targetHz > 5000)
-        {
-            targetHz -= 1000;
-        }
-        else if (targetHz > 1000)
-        {
-            targetHz -= 500;
-        }
-        else if (targetHz > 100)
-        {
-            targetHz -= 100;
-        }
-        else if (targetHz > 0)
-        {
-            targetHz = 0;
-        }
-
-#if DEBUG_SPEED
-        Serial.print("Speed DOWN: ");
-        Serial.print(oldTarget);
-        Serial.print(" -> ");
-        Serial.print(targetHz);
-        Serial.print(" Hz (running: ");
-        Serial.print(running ? "YES" : "NO");
-        Serial.println(")");
-#endif
-
-        if (running)
-        {
-            setClock(targetHz);
-        }
-    }
-
-    void setDirCW(bool cw)
-    {
-        dirCW = cw;
-        applyOutputs();
-
-#if DEBUG_MOTOR
-        Serial.print("Direction set to ");
-        Serial.println(cw ? "CW" : "CCW");
-#endif
-    }
-
-    void toggleDir()
-    {
-        dirCW = !dirCW;
-        applyOutputs();
-
-#if DEBUG_MOTOR
-        Serial.print("Direction toggled to ");
-        Serial.println(dirCW ? "CW" : "CCW");
-#endif
-    }
-
-    void toggleBrake()
-    {
-        if (prof.hasBrake)
-        {
-            brakeOn = !brakeOn;
-            applyOutputs();
-
-#if DEBUG_MOTOR
-            Serial.print("Brake toggled to ");
-            Serial.println(brakeOn ? "ON" : "OFF");
-#endif
-        }
-    }
-
-    void toggleEnable()
-    {
-        if (prof.hasEnable)
-        {
-            enabled = !enabled;
-            applyOutputs();
-
-#if DEBUG_MOTOR
-            Serial.print("Enable toggled to ");
-            Serial.println(enabled ? "ON" : "OFF");
-#endif
-        }
-    }
-
-    bool ldAlarm() const
-    {
-        if (!prof.hasLD)
-            return false;
-        int v = digitalRead(PIN_LD);
-        bool alarm = prof.ldActiveLow ? (v == LOW) : (v == HIGH);
-        return alarm;
-    }
-
-    void sampleRPM()
-    {
-        uint32_t now = millis();
-        if (now - lastRpmSample >= RPM_SAMPLE_MS)
-        {
-            noInterrupts();
-            uint32_t p = fgPulses;
-            fgPulses = 0;
-            interrupts();
-            
-            if (prof.hasFG && prof.ppr > 0)
-                rpm = (p * 60UL) / prof.ppr;
-            else
-                rpm = 0;
-            
-            lastRpmSample = now;
-
-            // FG loss safety
-            if (prof.hasFG && running)
-            {
-                if (rpm == 0 && currentHz > 0)
-                {
-                    targetHz = currentHz / 4;
-                    setClock(targetHz);
-#if DEBUG_MOTOR
-                    Serial.println("FG loss detected - reducing speed");
-#endif
-                }
-            }
-
-            // Telemetría solo si está activada
-            if (telemetryOn)
-            {
-                Serial.print("RPM:");
-                Serial.print(rpm);
-                Serial.print(" Hz:");
-                Serial.print(currentHz);
-                Serial.print(" Target:");
-                Serial.print(targetHz);
-                Serial.print(" DIR:");
-                Serial.print(dirCW ? "CW" : "CCW");
-                Serial.print(" LD:");
-                Serial.println(ldAlarm() ? "ALARM" : "OK");
-            }
-        }
-    }
-
-    // FG ISR
-    static void IRAM_ATTR isrFG();
-
-    // System settings
-    void setTelemetry(bool on)
-    {
-        telemetryOn = on;
-        sysPrefs.begin("sys", false);
-        sysPrefs.putBool("tele", telemetryOn);
-        sysPrefs.end();
-
-#if DEBUG_MOTOR
-        Serial.print("Telemetry set to ");
-        Serial.println(on ? "ON" : "OFF");
-#endif
-    }
-    
-    bool telemetry() const { return telemetryOn; }
-
-    void setLanguage(Language L)
-    {
-        lang = L;
-        sysPrefs.begin("sys", false);
-        sysPrefs.putUChar("lang", (uint8_t)L);
-        sysPrefs.end();
-
-#if DEBUG_MOTOR
-        Serial.print("Language set to ");
-        Serial.println(L == LANG_EN ? "EN" : "ES");
-#endif
-    }
-    
-    Language getLanguage() const { return lang; }
-
-    // Public fields
-    MotorProfile prof;
-    bool dirCW = true, brakeOn = false, enabled = true, running = false;
-    uint32_t targetHz = 1000, currentHz = 0, rpm = 0;
-
-private:
-    static volatile uint32_t fgPulses;
-    uint32_t lastRpmSample = 0;
-    Preferences sysPrefs;
-    bool telemetryOn = false;
-    Language lang = LANG_ES;
-};
-
-// Definición de la variable estática
-volatile uint32_t MotorRuntime::fgPulses = 0;
-
-// Definición de la función ISR
-void IRAM_ATTR MotorRuntime::isrFG()
-{
-    fgPulses++;
-}
+    // Coarse speed increase with tiered step sizes for fast navigation:
+    //  0   ->  100 Hz
