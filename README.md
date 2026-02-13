@@ -69,6 +69,15 @@ On the external side, you must verify whether the **external circuit already inc
 #define LEDC_TIMER_BITS 8
 ```
 
+### PCB – Top Side
+![Texto alternativo](img/pcb1.jpg)
+
+### PCB – Bottom Side
+![Texto alternativo](img/pcb2.jpg)
+
+### Electrical Schematic
+![Texto alternativo](img/pcb.jpg)
+
 ### 🔌 About the Optocouplers (Important)
 
 *   Each motor‑interface signal can be **opto‑isolated**.
