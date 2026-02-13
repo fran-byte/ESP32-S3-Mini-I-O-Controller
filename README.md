@@ -76,7 +76,7 @@ On the external side, you must verify whether the **external circuit already inc
 ![Texto alternativo](img/pcb2.jpg)
 
 ### Electrical Schematic
-![Texto alternativo](img/pcb.jpg)
+![Texto alternativo](img/pcb.png)
 
 ### 🔌 About the Optocouplers (Important)
 
