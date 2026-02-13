@@ -72,8 +72,12 @@ On the external side, you must verify whether the **external circuit already inc
 ### PCB – Top Side
 ![Texto alternativo](img/pcb1.jpg)
 
+![Texto alternativo](img/pcb1a.jpg)
+
 ### PCB – Bottom Side
 ![Texto alternativo](img/pcb2.jpg)
+
+![Texto alternativo](img/pcb2a.jpg)
 
 ### Electrical Schematic
 ![Texto alternativo](img/pcb.png)
