@@ -193,7 +193,7 @@ private:
             
             // Draw opening bracket [ (aligned with circle)
             disp->setFont(u8g2_font_6x12_tf);
-            disp->drawStr(xPos, 8, "[");
+            disp->drawStr(xPos, 9, "[");
             xPos += 6; // Move past [
             
             // Draw status icon (filled or empty circle)
@@ -206,7 +206,7 @@ private:
             
             // Draw closing bracket ]
             disp->setFont(u8g2_font_6x12_tf);
-            disp->drawStr(xPos, 8, "]");
+            disp->drawStr(xPos, 9, "]");
             xPos += 6; // Move past ]
             
             // Add space and status text
