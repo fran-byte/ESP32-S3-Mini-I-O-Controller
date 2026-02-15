@@ -427,11 +427,13 @@ private:
 
     // Main menu: build dynamic items according to runtime (running, brake presence, profiles).
     // Short SELECT executes action, long SELECT is intentionally disabled in menus.
+// Main menu: build dynamic items according to runtime (running, brake presence, profiles).
+// Short RIGHT executes action, LEFT goes back to HOME.
     void handleMenu()
     {
         const char *items[12];
         int n = 0;
-        items[n++] = S().m_autotest;  // ← AutoTest PRIMERO
+        items[n++] = S().m_autotest;  // AutoTest FIRST
         items[n++] = motor->running ? S().m_stop : S().m_start;
         items[n++] = motor->dirCW ? S().m_set_ccw : S().m_set_cw;
         if (motor->prof.hasBrake)
@@ -443,37 +445,45 @@ private:
             items[n++] = S().m_delete_active;
         items[n++] = S().m_settings;
         items[n++] = S().m_about;
-
+    
         // Navigation
         if (btn->upPressed() && menuIndex > 0)
         {
             menuIndex--;
             needRedraw = true;
         }
-
+    
         if (btn->downPressed() && menuIndex < n - 1)
         {
             menuIndex++;
             needRedraw = true;
         }
-
+    
         // LEFT: Back to HOME
         if (btn->leftPressed())
         {
-#if DEBUG_BUTTONS
+    #if DEBUG_BUTTONS
             Serial.println("[UI] LEFT: Back to HOME from MENU");
-#endif
+    #endif
             state = HOME;
             needRedraw = true;
             return;
         }
-
-        // Short RIGHT: handle action by matching index in order
+    
+        // SHORT RIGHT: handle action by matching index in order
         if (btn->rightPressed())
         {
             delay(100); // small UX pause
             int c = 0;
-
+    
+            // AutoTest (first option)
+            if (menuIndex == c++)
+            {
+                startAutoTest();
+                return;
+            }
+            
+            // Start/Stop
             if (menuIndex == c++)
             {
                 if (motor->running)
@@ -484,6 +494,8 @@ private:
                 needRedraw = true;
                 return;
             }
+            
+            // Set DIR = CW/CCW
             if (menuIndex == c++)
             {
                 motor->toggleDir();
@@ -491,6 +503,8 @@ private:
                 needRedraw = true;
                 return;
             }
+            
+            // Brake ON/OFF (if present)
             if (motor->prof.hasBrake)
             {
                 if (menuIndex == c++)
@@ -501,12 +515,8 @@ private:
                     return;
                 }
             }
-            // AutoTest
-            if (menuIndex == c++)
-            {
-                startAutoTest();
-                return;
-            }
+            
+            // Select Motor (if profiles exist)
             if (pst->getCount() > 0)
             {
                 if (menuIndex == c++)
@@ -517,11 +527,15 @@ private:
                     return;
                 }
             }
+            
+            // Add Motor
             if (menuIndex == c++)
             {
                 enterAddWizard();
                 return;
             }
+            
+            // Delete Active (if profiles exist)
             if (pst->getCount() > 0)
             {
                 if (menuIndex == c++)
@@ -537,6 +551,8 @@ private:
                     return;
                 }
             }
+            
+            // Settings
             if (menuIndex == c++)
             {
                 state = SETTINGS;
@@ -544,6 +560,8 @@ private:
                 needRedraw = true;
                 return;
             }
+            
+            // About
             if (menuIndex == c++)
             {
                 state = ABOUT;
@@ -551,7 +569,7 @@ private:
                 return;
             }
         }
-
+    
         if (needRedraw)
         {
             drawMenuList(items, n);
