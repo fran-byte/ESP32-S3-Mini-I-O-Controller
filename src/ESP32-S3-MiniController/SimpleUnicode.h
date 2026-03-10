@@ -178,6 +178,13 @@ namespace SimpleUnicode
         drawGlyph(u8g2, x, y, BLOCK_LIGHT); 
     }
 
+    // Draw progress bar — filled blocks only, empty positions are blank
+    void drawProgressBarClean(U8G2 *u8g2, int x, int y, int length, int filled)
+    {
+        for (int i = 0; i < filled; i++)
+            drawBlockFull(u8g2, x + (i * 6), y);
+    }
+
     // Draw progress bar (horizontal)
     // x, y: top-left corner
     // length: number of blocks (total)

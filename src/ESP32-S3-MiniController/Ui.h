@@ -304,34 +304,26 @@ private:
                 if (filledBlocks > BAR_LENGTH) filledBlocks = BAR_LENGTH;
             }
             
-            // Draw progress bar at Y=27 using custom glyphs
-            SimpleUnicode::drawProgressBar(disp, 2, 27, BAR_LENGTH, filledBlocks);
-            
-            // Speed value (Hz) aligned to the right
-            disp->setFont(u8g2_font_6x12_tf);
-            char hzValue[16];
-            snprintf(hzValue, sizeof(hzValue), "%luHz", (unsigned long)motor->currentHz);
-            int hzWidth = strlen(hzValue) * 6;
-            disp->drawStr(128 - hzWidth - 2, 35, hzValue);
+            // Draw progress bar — filled blocks only, no empty markers
+            SimpleUnicode::drawProgressBarClean(disp, 2, 27, BAR_LENGTH, filledBlocks);
             
             // ============ STATUS LINE (Y: 47) ============
-            // Compact states: DIR + BRAKE + LD
+            // DIR + Hz (right-aligned) + BRAKE + LD
             disp->setFont(u8g2_font_6x12_tf);
             
             int statusX = 2;
             int statusY = 47;
             
-            // DIR (always shown)
+            // DIR label
             disp->drawStr(statusX, statusY, "DIR:");
-            statusX += 24; // Move past "DIR:"
+            statusX += 24;
             
-            // Draw direction arrow
+            // Direction arrow
             if (motor->dirCW)
                 SimpleUnicode::drawArrowRight(disp, statusX, statusY - 8);
             else
                 SimpleUnicode::drawArrowLeft(disp, statusX, statusY - 8);
-            
-            statusX += 14; // Move past arrow
+            statusX += 14;
             
             // BRAKE (if present)
             if (motor->prof.hasBrake)
@@ -348,12 +340,19 @@ private:
                 disp->setFont(u8g2_font_6x12_tf);
                 disp->drawStr(statusX, statusY, "LD:");
                 statusX += 18;
-                
-                // Draw check or X mark
                 if (motor->ldAlarm())
                     SimpleUnicode::drawXMark(disp, statusX, statusY - 8);
                 else
                     SimpleUnicode::drawCheckMark(disp, statusX, statusY - 8);
+            }
+
+            // Hz value — right-aligned on the DIR line
+            {
+                char hzValue[16];
+                snprintf(hzValue, sizeof(hzValue), "%luHz", (unsigned long)motor->currentHz);
+                int hzWidth = strlen(hzValue) * 6;
+                disp->setFont(u8g2_font_6x12_tf);
+                disp->drawStr(128 - hzWidth - 2, statusY, hzValue);
             }
             
             // ============ SEPARATOR LINE (Y: 49) ============
