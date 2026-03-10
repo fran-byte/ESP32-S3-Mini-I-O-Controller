@@ -238,30 +238,18 @@ private:
             // [●] RUNNING / [ ] STOPPED + RPM on the right
             disp->setFont(u8g2_font_6x12_tf);
             
-            // Status icon (custom glyph) and text with brackets
-            int xPos = 2;
-            
-            // Draw opening bracket [ (aligned with circle)
+            // Status text: RUNNING (blinking) or STOPPED (static)
             disp->setFont(u8g2_font_6x12_tf);
-            disp->drawStr(xPos, 9, "[");
-            xPos += 6; // Move past [
-            
-            // Draw status icon (filled or empty circle)
             if (motor->running)
-                SimpleUnicode::drawFilledCircle(disp, xPos, 2);
+            {
+                // Blink at ~2 Hz: visible 250ms, hidden 250ms
+                if ((millis() / 250) % 2 == 0)
+                    disp->drawStr(2, 10, "RUNNING");
+            }
             else
-                SimpleUnicode::drawEmptyCircle(disp, xPos, 2);
-            
-            xPos += 8; // Move past the icon
-            
-            // Draw closing bracket ]
-            disp->setFont(u8g2_font_6x12_tf);
-            disp->drawStr(xPos, 9, "]");
-            xPos += 6; // Move past ]
-            
-            // Add space and status text
-            disp->setFont(u8g2_font_6x12_tf);
-            disp->drawStr(xPos + 2, 10, motor->running ? "RUNNING" : "STOPPED");
+            {
+                disp->drawStr(2, 10, "STOPPED");
+            }
             
             // RPM (right side, only if FG present)
             if (motor->prof.hasFG)
@@ -295,17 +283,25 @@ private:
                 disp->setFont(u8g2_font_6x12_tf);
             }
             
-            // Calculate progress bar (14 blocks)
-            const int BAR_LENGTH = 14;
+            // Progress bar: 19 blocks × (6px wide + 1px gap) → fills x=2..126
+            // Each block: 6px wide, 7px tall, 1px gap between blocks
+            const int BAR_BLOCKS = 19;
+            const int BLOCK_W    = 6;
+            const int BLOCK_GAP  = 1;
+            const int BLOCK_H    = 7;
+            const int BAR_X      = 2;
+            const int BAR_Y      = 27;
             int filledBlocks = 0;
             if (motor->prof.maxClockHz > 0)
             {
-                filledBlocks = (motor->currentHz * BAR_LENGTH) / motor->prof.maxClockHz;
-                if (filledBlocks > BAR_LENGTH) filledBlocks = BAR_LENGTH;
+                filledBlocks = (int)((motor->currentHz * (long)BAR_BLOCKS) / motor->prof.maxClockHz);
+                if (filledBlocks > BAR_BLOCKS) filledBlocks = BAR_BLOCKS;
             }
-            
-            // Draw progress bar — filled blocks only, no empty markers
-            SimpleUnicode::drawProgressBarClean(disp, 2, 27, BAR_LENGTH, filledBlocks);
+            for (int i = 0; i < filledBlocks; i++)
+            {
+                int bx = BAR_X + i * (BLOCK_W + BLOCK_GAP);
+                disp->drawBox(bx, BAR_Y, BLOCK_W, BLOCK_H);
+            }
             
             // ============ STATUS LINE (Y: 47) ============
             // DIR + Hz (right-aligned) + BRAKE + LD
@@ -380,6 +376,18 @@ private:
         static unsigned long lastSpeedChange = 0;
         const unsigned long SPEED_DELAY = 150; // rate-limit for speed changes
         unsigned long now = millis();
+
+        // Force redraw every 250 ms while running so RUNNING text blinks
+        if (motor->running)
+        {
+            static unsigned long lastBlinkPhase = 0;
+            unsigned long phase = now / 250;
+            if (phase != lastBlinkPhase)
+            {
+                lastBlinkPhase = phase;
+                needRedraw = true;
+            }
+        }
 
         // UP: increase speed (coarse step strategy in MotorRuntime)
         if (btn->upPressed())
